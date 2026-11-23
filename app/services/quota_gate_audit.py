@@ -1,4 +1,4 @@
-"""配额闸读轨审计：汇总切流账册与双写两轨两侧引用。"""
+"""配额闸读轨审计：纯读汇总切流账册（甲路）与双写骨架（乙路未选）。"""
 from __future__ import annotations
 
 from app.db import get_db

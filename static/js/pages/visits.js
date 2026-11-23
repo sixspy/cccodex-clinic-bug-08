@@ -1,10 +1,11 @@
-import { api, chip, escapeHtml } from '../api.js';
+import { api, chip, escapeHtml, quotaGateChip } from '../api.js';
 
 export async function renderVisits(el) {
-  const [batches, sites, protocols] = await Promise.all([
+  const [batches, sites, protocols, quotaSnap] = await Promise.all([
     api('/api/batches'),
     api('/api/sites'),
     api('/api/protocols?status=' + encodeURIComponent('生效')),
+    api('/api/quota_gate/snap'),
   ]);
   const siteOpts = (sites.items || [])
     .filter((s) => s.status !== '停用')
@@ -16,7 +17,7 @@ export async function renderVisits(el) {
 
   el.innerHTML = `
     <div class="card">
-      <h2><span class="chip" data-thick="quota_gate">配额已亮</span> 访视清单抓取批次</h2>
+      <h2>${quotaGateChip(quotaSnap)} 访视清单抓取批次</h2>
       <p class="muted">按试验中心开批次，模拟抓取访视行，合格行可入库，缺口行进入质控与补采。</p>
       <div class="row">
         <select id="siteId">${siteOpts}</select>

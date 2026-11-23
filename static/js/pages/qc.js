@@ -1,16 +1,17 @@
-import { api, chip, escapeHtml } from '../api.js';
+import { api, chip, escapeHtml, quotaGateChip } from '../api.js';
 
 export async function renderQc(el) {
-  const [findings, batches] = await Promise.all([
+  const [findings, batches, quotaSnap] = await Promise.all([
     api('/api/findings'),
     api('/api/batches'),
+    api('/api/quota_gate/snap'),
   ]);
   const summary = findings.summary || {};
   const openBatches = (batches.items || []).filter((b) => b.status !== '已关闭');
 
   el.innerHTML = `
     <div class="card">
-      <h2><span class="chip" data-thick="quota_gate">配额已亮</span> 字段质控发现</h2>
+      <h2>${quotaGateChip(quotaSnap)} 字段质控发现</h2>
       <p class="muted">对缺口质量行扫描生成发现；缺字段/编码空/重复键会带严重度。关闭发现不自动改质量，补采成功后会联动关闭。</p>
       <div class="grid">
         <div class="stat"><div class="n">${summary.open || 0}</div><div class="l">开放发现</div></div>

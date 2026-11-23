@@ -1,43 +1,43 @@
-"""配额闸切流账册：应锁当刻指纹并拒回刷；当前只记软笔记。"""
+"""配额闸切流账册（甲路收口面）。
+
+落台即锁当刻指纹、拒回刷、读轨切到 cutover_book；本模块的账册写入统一走
+quota_gate.commit_action 的单事务物化，不再只记软笔记。
+"""
 from __future__ import annotations
 
 from app.db import get_db
 from app.services.quota_gate import (
+    _SLUG,
     active_read_ref,
+    commit_action,
     cutover_fp,
     dashboard,
     panel_chip,
-    record_event,
     reject_refresh,
     truth_flag,
 )
-
-_SLUG = "quota_gate"
-_TITLE = "配额闸"
-_OK = "配额已亮"
-_BAD = "已用配额旧"
+from app.services.errors import ServiceError
 
 
 def append_cutover(ref_id: int, note: str, db_path: str | None = None) -> dict:
+    """切流账册落台：委托唯一写入口完成物化 + 指纹锁定 + 读轨切换。"""
+    result = commit_action(
+        {"ref_id": int(ref_id or 0), "note": note or "配额钉定"}, db_path
+    )
     with get_db(db_path) as conn:
         conn.execute(
             "INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)",
-            (f"{_SLUG}_cutover_note_{ref_id}", note or _TITLE),
+            (f"{_SLUG}_cutover_note_{int(ref_id or 0)}", note or "配额闸"),
         )
-        # missing: durable fp lock + reject_refresh=1 + active_read=cutover_book
-        conn.execute(
-            "INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)",
-            (f"{_SLUG}_panel_chip", _OK),
-        )
-    record_event(f"cutover-note ref={ref_id} {note}", db_path)
     return {
-        "ref_id": ref_id,
+        "ref_id": int(ref_id or 0),
         "note": note,
         "panel": panel_chip(db_path),
         "truth": truth_flag(db_path),
         "active_read": active_read_ref(db_path),
         "cutover_fp": cutover_fp(db_path),
         "reject_refresh": reject_refresh(db_path),
+        "aligned": result["aligned"],
     }
 
 
@@ -62,5 +62,5 @@ def board(db_path: str | None = None) -> dict:
     dash = dashboard(db_path)
     dash["cutover"] = cutover_rows(db_path)
     dash["fate"] = "cutover_book"
-    dash["panel_pack_mismatch"] = dash.get("panel_pack_mismatch", True)
+    dash["panel_pack_mismatch"] = dash.get("panel_pack_mismatch", False)
     return dash

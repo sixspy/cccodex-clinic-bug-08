@@ -2,9 +2,27 @@ from __future__ import annotations
 
 from app.db import get_db
 from app.services import audit as audit_svc
+from app.services import quota_gate as quota_gate_svc
 from app.services.errors import ServiceError
 
 VALID_STATUS = ("启用", "停用", "观察")
+
+
+def _quota_state_map(db_path: str | None = None) -> dict[int, dict]:
+    try:
+        return {s["site_id"]: s for s in quota_gate_svc.site_states(db_path)}
+    except Exception:
+        return {}
+
+
+def _attach_quota_state(items: list[dict], db_path: str | None) -> list[dict]:
+    states = _quota_state_map(db_path)
+    for item in items:
+        state = states.get(item["id"])
+        item["used_live"] = state["used_live"] if state else int(item.get("gap_total", 0))
+        item["used_pack"] = state["used_pack"] if state else item["used_live"]
+        item["quota_state"] = state["quota_state"] if state else "未收口"
+    return items
 
 
 def list_sites(db_path: str | None = None, status: str | None = None) -> list[dict]:
@@ -16,7 +34,10 @@ def list_sites(db_path: str | None = None, status: str | None = None) -> list[di
                 """
                 SELECT s.*,
                   (SELECT COUNT(*) FROM visit_batches b WHERE b.site_id=s.id) AS batch_count,
-                  (SELECT COALESCE(SUM(b.gap_count),0) FROM visit_batches b WHERE b.site_id=s.id) AS gap_total
+                  (SELECT COALESCE(SUM(b.gap_count),0) FROM visit_batches b WHERE b.site_id=s.id) AS gap_total,
+                  (SELECT COUNT(*) FROM visit_rows r
+                     JOIN visit_batches b ON b.id=r.batch_id
+                    WHERE b.site_id=s.id) AS used_live
                 FROM trial_sites s
                 WHERE s.status=?
                 ORDER BY s.id
@@ -28,12 +49,16 @@ def list_sites(db_path: str | None = None, status: str | None = None) -> list[di
                 """
                 SELECT s.*,
                   (SELECT COUNT(*) FROM visit_batches b WHERE b.site_id=s.id) AS batch_count,
-                  (SELECT COALESCE(SUM(b.gap_count),0) FROM visit_batches b WHERE b.site_id=s.id) AS gap_total
+                  (SELECT COALESCE(SUM(b.gap_count),0) FROM visit_batches b WHERE b.site_id=s.id) AS gap_total,
+                  (SELECT COUNT(*) FROM visit_rows r
+                     JOIN visit_batches b ON b.id=r.batch_id
+                    WHERE b.site_id=s.id) AS used_live
                 FROM trial_sites s
                 ORDER BY s.id
                 """
             ).fetchall()
-        return [dict(r) for r in rows]
+        items = [dict(r) for r in rows]
+    return _attach_quota_state(items, db_path)
 
 
 def get_site(site_id: int, db_path: str | None = None) -> dict:
@@ -62,7 +87,7 @@ def get_site(site_id: int, db_path: str | None = None) -> dict:
         data = dict(row)
         data["batches"] = [dict(b) for b in batches]
         data["open_gaps"] = open_gaps
-        return data
+    return _attach_quota_state([data], db_path)[0]
 
 
 def create_site(

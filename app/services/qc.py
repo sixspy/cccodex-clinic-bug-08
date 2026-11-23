@@ -110,9 +110,6 @@ def _field_hints(quality: str, payload: str, required: list[str]) -> list[tuple[
 
 
 def scan_batch(batch_id: int, db_path: str | None = None) -> dict:
-    from app.services.quota_gate import paint_ok, commit_action
-    paint_ok(db_path)
-    commit_action({"scan_batch": batch_id}, db_path)
     created = []
     with get_db(db_path) as conn:
         batch = conn.execute(

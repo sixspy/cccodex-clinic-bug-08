@@ -26,6 +26,25 @@ export function chip(status) {
   return `<span class="chip ${chipClass(status)}">${status || '-'}</span>`;
 }
 
+// 配额闸徽标：真相由后端物化包对齐态计算，前端只渲染，不再写死“配额已亮”
+export function quotaGateChip(snap) {
+  if (!snap) return '<span class="chip idle" data-thick="quota_gate">配额闸未接入</span>';
+  if (snap.active_read === 'old_track') {
+    return '<span class="chip warn" data-thick="quota_gate">配额闸未收口</span>';
+  }
+  if (snap.aligned) {
+    return '<span class="chip ok" data-thick="quota_gate">配额已亮</span>';
+  }
+  return '<span class="chip bad" data-thick="quota_gate">已用配额旧</span>';
+}
+
+export function quotaStateChip(state) {
+  const s = String(state || '');
+  if (s === '配额已亮') return `<span class="chip ok">${s}</span>`;
+  if (s === '已用配额旧') return `<span class="chip bad">${s}</span>`;
+  return `<span class="chip warn">${s || '未收口'}</span>`;
+}
+
 export function escapeHtml(s) {
   return String(s ?? '')
     .replaceAll('&', '&amp;')

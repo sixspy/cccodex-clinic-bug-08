@@ -115,6 +115,9 @@ def ensure_db() -> Path:
     path = Config.DATABASE_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(path) as conn:
+        # WAL 让写操作不必逐笔 fsync，显著降低文件系统（尤其 WSL2）延迟
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
         conn.executescript(SCHEMA)
         conn.commit()
     return path
@@ -127,6 +130,7 @@ def get_db(db_path: str | Path | None = None):
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=5000")
     try:
         yield conn
         conn.commit()

@@ -66,36 +66,16 @@ export async function renderSettings(el) {
   try {
     const dash = await api('/api/quota_gate/dash');
     el.innerHTML += `<div class="card" style="margin-top:1rem">
-      <h3>配额钉定</h3>
-      <span class="chip">${dash.chip}</span>
-      <p class="muted">读轨 ${dash.active_read} · 切流指纹 ${dash.cutover_fp || '空'} · 拒回刷 ${dash.reject_refresh} · 归档 ${dash.archive_count} · 新旗 ${dash.live_flag || '空'} · 对齐差 ${dash.panel_pack_mismatch}</p>
-      <div class="row">
-        <button id="go_quota_gate" type="button">落台</button>
-        <button id="half_quota_gate" type="button">半修对齐</button>
-        <button id="cut_quota_gate" type="button">切流账册</button>
-        <button id="dual_quota_gate" type="button">双写两轨</button>
-      </div>
+      <h3>配额闸命运（只读骨架，落台请在「试验中心」页）</h3>
+      <span class="chip ${dash.aligned ? 'ok' : 'bad'}">${dash.truth}</span>
+      <p class="muted">
+        选边：甲路（切流账册 + 物化包，已选）｜ 乙路（双写两轨，未选，写入会被拒）<br/>
+        读轨 ${escapeHtml(dash.active_read)} · 切流指纹 ${escapeHtml(dash.cutover_fp || '空')}
+        · 拒回刷 ${dash.reject_refresh ? '开' : '关'} · 归档 ${dash.archive_count}
+        · 新旗 ${escapeHtml(dash.live_flag || '空')} · 对齐 ${dash.aligned ? '是' : '否'}
+      </p>
+      <div class="detail-box">${escapeHtml(JSON.stringify(dash.site_states || [], null, 2))}</div>
     </div>`;
-    const go = el.querySelector('#go_quota_gate');
-    if (go) go.onclick = async () => {
-      await api('/api/quota_gate/commit', { method:'POST', body: JSON.stringify({ref:1}) });
-      await renderSettings(el);
-    };
-    const half = el.querySelector('#half_quota_gate');
-    if (half) half.onclick = async () => {
-      await api('/api/quota_gate/half', { method:'POST', body:'{}' });
-      await renderSettings(el);
-    };
-    const cut = el.querySelector('#cut_quota_gate');
-    if (cut) cut.onclick = async () => {
-      await api('/api/quota_gate/cutover', { method:'POST', body: JSON.stringify({ref_id:1, note:'配额闸'}) });
-      await renderSettings(el);
-    };
-    const dual = el.querySelector('#dual_quota_gate');
-    if (dual) dual.onclick = async () => {
-      await api('/api/quota_gate/dual', { method:'POST', body: JSON.stringify({note:'配额闸'}) });
-      await renderSettings(el);
-    };
   } catch (e) { /* optional surface */ }
 
 }

@@ -202,6 +202,10 @@ def add_visit_row(
         site = conn.execute(
             "SELECT * FROM trial_sites WHERE id=?", (batch["site_id"],)
         ).fetchone()
+        # 配额闸业务落点：未对齐或超配额一律挡下，杜绝超配额抓取灌脏
+        from app.services.quota_gate import ensure_site_writable
+
+        ensure_site_writable(batch["site_id"], db_path)
         if site and site["quota"] > 0:
             if batch["item_count"] >= site["quota"]:
                 raise ServiceError("已达中心配额上限，不能再追加")

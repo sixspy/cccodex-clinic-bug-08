@@ -1,17 +1,18 @@
-import { api, chip, escapeHtml } from '../api.js';
+import { api, chip, escapeHtml, quotaGateChip } from '../api.js';
 
 /* quota_gate-board */
 export async function renderReconcile(el) {
-  const [dash, reports, matrix, audits] = await Promise.all([
+  const [dash, reports, matrix, audits, quotaSnap] = await Promise.all([
     api('/api/dashboard'),
     api('/api/reports'),
     api('/api/reports/matrix'),
     api('/api/audits?limit=30'),
+    api('/api/quota_gate/snap'),
   ]);
 
   el.innerHTML = `
     <div class="card">
-      <h2><span class="chip" data-thick="quota_gate">配额已亮</span> 访视对账台</h2>
+      <h2>${quotaGateChip(quotaSnap)} 访视对账台</h2>
       <p class="muted">对照缺口行、开放质控发现与补采队列，找出无发现缺口、陈旧发现、未覆盖补采等不一致。</p>
       <div class="grid">
         <div class="stat"><div class="n">${dash.gaps}</div><div class="l">当前缺口行</div></div>

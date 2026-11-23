@@ -109,8 +109,6 @@ def enqueue_from_row(row_id: int, db_path: str | None = None) -> dict:
 
 
 def enqueue_gaps_for_batch(batch_id: int, db_path: str | None = None) -> dict:
-    from app.services.quota_gate import commit_action
-    commit_action({"enqueue_batch": batch_id}, db_path)
     with get_db(db_path) as conn:
         rows = conn.execute(
             """
